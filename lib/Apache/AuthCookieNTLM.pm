@@ -13,7 +13,7 @@ use Apache::AuthenNTLM;
 use base ('Apache::AuthenNTLM');
 
 use vars qw($VERSION);
-$VERSION = 0.03;
+$VERSION = 0.04;
 
 my $cookie_values = {};
 
@@ -33,12 +33,11 @@ sub handler ($$) {
 		
 	# Set cookie name
 	my $cname = $config{name} || $auth_type . '_' . $auth_name;
-	print STDERR "AuthCookieNTLM - Cookie Name: $cname\n" if $debug > 0;
+	print STDERR "AuthCookieNTLM - Looking for Cookie Name: $cname\n" if $debug > 0;
 	
 	# Look for cookie
 	my $t = Apache::Request->new($self);
 	my %cookiejar = Apache::Cookie->new($t)->parse;
-	print STDERR "AuthCookieNTLM - Cookies found: " . Dumper(\%cookiejar) if $debug > 0;
 	
 	unless ( defined $cookiejar{$cname} ) {
 		# Don't have the cookie, try authenticate
@@ -59,6 +58,9 @@ sub handler ($$) {
 			$r->header_out('Set-Cookie' => $cookie->bake());
 
 			if($debug > 0) {
+				print STDERR "AuthCookieNTLM - Setting Cookie Expire: " . $config{'expires'} . "\n" if $debug > 0 && defined $config{'expires'};
+				print STDERR "AuthCookieNTLM - Setting Cookie Domain: " . $config{'domain'} . "\n" if $debug > 0 && defined $config{'domain'};
+				print STDERR "AuthCookieNTLM - Setting Cookie Secure: " . $config{'secure'} . "\n" if $debug > 0 && defined $config{'secure'};
 				print STDERR "AuthCookieNTLM - Setting Cookie values: " . Dumper($cookie_values) . "\n" if $debug > 0;
 			}			
 		}
@@ -140,14 +142,14 @@ when the server asks for NTLM authentication. This saves the user typing in
 their windows login and password. 
 
 Apache::AuthCookieNTLM is an interface to Shannon Peevey's 
-Apache::AuthenNTLM module. The main aim is to authenticate a user 
-using their Windows login and authenticating against the Windows
-PDC, but to also store their login name into a cookie. This means
-that it can be accessed from other pages and stops the system
-having to authenticate for every request.
+Apache::AuthenNTLM module. This modules authenticates a user 
+using their Windows login against the Windows PDC, but to also 
+stores their login name into a cookie. This means that it can be 
+accessed from other pages and stops the system having to 
+authenticate for every request.
 
 We did consider using Apache::AuthCookie to store the details in a 
-cookie but since using NTLM is so that one can remove the need
+cookie but since using NTLM is basicaly there to remove the need
 to login and is almost exclusively for intranets (as it needs access
 to the PDC), we decided it was feasible not to use it.
 
@@ -189,7 +191,6 @@ Setting this value means debugging information is shown in the
 apache error log, this value is also used for Apache::AuthenNTLM.
 Default to 0, set to 1 or 2 for more debugging info.
 
-
 =head1 OVERRIDEABLE METHODS
 
 =head2 choose_cookie_values()
@@ -198,9 +199,11 @@ The method can be overwritten to set the values stored in the cookie
 
 =head2 Example for overriding
 
-This is an example how to set your cookie values with whatever 
+This is an example of how to set your cookie values with whatever 
 data you what, into our global variable $cookie_values which 
-is a hash reference.
+is the hash reference stored in the cookie, you don't even
+have to store the username if you don't want to, it just has
+to store some key and value.
 
   package Apache::AuthCookieNTLM::MYAuthenNTLM;
 
@@ -220,7 +223,56 @@ is a hash reference.
     }
   }
   1;
-  
+
+=head1 COMMON PROBLEMS
+
+First test Apache::AuthenNTLM directly without this module.
+
+=head2 NTLM Authentication
+
+If you get prompted for a login / passwd / domain IE probably isn't 
+sending the NTLM information. Ensure that IE sees the server as a 
+'trusted' intranet site  (and therefor sends the username). You 
+should be  able to set this as a policy across your network, or on 
+each machine:
+
+'Tools' -> 'Internet Options' -> 'Security' -> 'Local Intranet' ->
+'Sites' -> 'Advanced' and add it in there, this must start
+with http:// or https://
+
+Once this is working you should be able to just replace
+
+  PerlAuthenHandler Apache::AuthenNTLM
+
+with		
+		
+  PerlAuthenHandler Apache::AuthCookieNTLM
+
+And have it all just work[tm].
+
+Remember to quit IE and reload as it's crap at implementing
+changes on the fly!
+
+=head2 Not setting cookies
+
+IE doesn't seem to alert you (if you've turned prompt on 
+for cookies). We guess it's because its from the trusted site.
+
+Also check your using the right domain, as can be
+seen when you turn debug on.
+
+=head2 access to /test failed in error log - but it works
+
+Because Apache::AuthenNTLM has to go through several loops
+the first of which will fail, this will be reported in
+your error log, but you can just ignore it.
+
+=head1 SEE ALSO
+
+L<Apache::AuthenNTLM>,
+L<Apache::Cookie>,
+L<CGI::Cookie>
+
 =head1 AUTHOR
 
 Leo Lapworth <llap@cuckoo.org>, Francoise Dehinbo
