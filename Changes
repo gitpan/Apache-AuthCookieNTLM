@@ -1,9 +1,15 @@
 Revision history for Perl extension Apache::AuthCookieNTLM
 
+0.06  Mon Nov 11 10:11 2003
+	- Changed the way this module should be inherited (see docs)
+	  as I'd forgotten about the global, much cleaner now.
+	- Found bug in the way I'd suggested to inherit - it didn't
+	  work!
+
 0.05  Mon Nov 10 11:39 2003
 	- REMOTE_USER is now set if 'username' and 'domainname' are
 	  set by choose_cookie_values().
-
+	  
 0.04  Fri Nov 6 13:45 2003
 	- More cleaning up and documentation
 	- added a bit more debugging as well

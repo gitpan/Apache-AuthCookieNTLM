@@ -1,7 +1,7 @@
 package Apache::AuthCookieNTLM;
 
 # Small wrapper to Apache::AuthenNTLM to store user login details to cookie
-# and reduce the number of PDC requests
+# and reduce the number of PDC requests.
 
 use strict;
 use Data::Dumper;
@@ -13,10 +13,10 @@ use Apache::AuthenNTLM;
 use base ('Apache::AuthenNTLM');
 
 use vars qw($VERSION);
-$VERSION = 0.05;
+$VERSION = 0.06;
 
+# Global to store stuff in
 my $cookie_values = {};
-my $user_domain = '';
 
 sub handler ($$) {
 	my ($self,$r) = @_;
@@ -72,7 +72,9 @@ sub handler ($$) {
 		print STDERR "AuthCookieNTLM - Found Cookies for '$cname'\n" if $debug > 0;
 		my %c = $cookiejar{$cname}->parse();
 		if(defined $c{$cname}) {
+			print STDERR "AuthCookieNTLM - Cookie Matched \n" if $debug > 1;
 			my %v = $c{$cname}->value();
+			print STDERR "AuthCookieNTLM - Cookie values " . Dumper(\%v) . "\n" if $debug > 1;
 			if(defined $v{'username'} && defined $v{'userdomain'}) {
 				my $user = lc($v{'userdomain'} . '\\' . $v{'username'});
 		        $r ->user($user) if ref($r) eq 'Apache';
@@ -84,15 +86,33 @@ sub handler ($$) {
 	return OK;
 }
 
+sub check_cookie {
+	my $self = shift;
+	return 1 if ( $cookie_values eq {} || $cookie_values->{username} ne $self->{username} );
+	return undef;
+}
+
+# Private method to set the cookie
+sub set_cookie {
+	my ($self, $conf) = @_;
+	
+	# Must have the user name to validate check_cookie()
+	$cookie_values->{'username'} = $self->{'username'};
+	$cookie_values->{'userdomain'} = $self->{'userdomain'};
+
+	while( my ($name, $value) = each %{$conf}) {
+		$cookie_values->{$name} = $value;
+	}
+};
+
 # This is the method which others could overload to
 # set what ever values they want.
 sub choose_cookie_values {
 	my ($self,$r) = @_;
 	
-	# Save to global
-	if ($cookie_values eq {} || $cookie_values->{username} ne $self->{username}) {
-		$cookie_values->{username} = $self->{username};
-		$cookie_values->{userdomain} = $self->{userdomain};
+	# Save
+	if ($self->check_cookie()) {
+		$self->set_cookie();
 	}
 }
 
@@ -210,36 +230,33 @@ The method can be overwritten to set the values stored in the cookie
 =head2 Example for overriding
 
 This is an example of how to set your cookie values with whatever 
-data you what, into our global variable $cookie_values which 
-is the hash reference stored in the cookie, you don't even
-have to store the username if you don't want to, it just has
-to store some key and value.
+data you want.
 
-  package Apache::AuthCookieNTLM::MYAuthenNTLM;
+  package MYAuthenNTLM;
 
   use Apache::AuthCookieNTLM;	
   use base ( 'Apache::AuthCookieNTLM' );
-
+  use MyUserLookup_Package;
+  
   sub choose_cookie_values {
-    my $self = shift;
+    my ($self,$r) = @_;
+	
+    # Save if it's not already set
+    if ($self->check_cookie()) {
+		# Look up against other sources
+	    my $person = MyUserLookup_Package->new($self->{'username'});
 
-    # Save to global
-    if ($cookie_values eq {} || $cookie_values->{username} ne $self->{username}) {
-	  # Must be set if you want REMOTE_USER set
-      $cookie_values->{username} = $self->{username};
-      $cookie_values->{userdomain} = $self->{userdomain};
-
-      # look up from some package
-      my $person = MyUserLookup_Package->new($self->{'username'});
-      $cookie_values->{'email'} = $person->email();
-      $cookie_values->{'shoe_size'} = $person->shoe_size();
+        $self->set_cookie({
+            'email'	=> $person->email(),
+            'shoe_size' => $person->shoe_size(),
+        });
     }
   }
   1;
 
-If you want REMOTE_USER to be set then the cookie_values must store
-the 'username' and 'userdomain'.  
-  
+'username' and 'userdomain' are set automatically, though you 
+can override them, they are used to set the REMOTE_USER value.
+
 =head1 COMMON PROBLEMS
 
 First test Apache::AuthenNTLM directly without this module.
