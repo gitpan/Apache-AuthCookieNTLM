@@ -1,0 +1,15 @@
+Revision history for Perl extension Apache::AuthCookieNTLM
+
+0.03  Thur Nov 6 17:22 2003
+	- First CPAN release
+	- Clean up code & docs
+	- Add debugin
+	- Added domain and secure cookie settings
+	
+0.02  Wed Nov 5 17:22 2003
+	- First public release	
+	
+0.01  Tue Nov  4 11:05:31 2003
+	- original version; created by h2xs 1.21 with options
+		-A -X -n Apache::AuthCookieNTLM
+
