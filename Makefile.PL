@@ -6,7 +6,7 @@ WriteMakefile(
     'VERSION_FROM'	=> 'lib/Apache/AuthCookieNTLM.pm', # finds $VERSION
     'PREREQ_PM'		=> {
 		'Test::More'	     => 0.01,
-		'Apache::AuthenNTLM' => 0.23,
+		'Apache::AuthenNTLM' => 2.07,
 		'Apache::Request'    => 0.01,
 		'Apache::Cookie'     => 0.01,	
 		'Apache::Constants'  => 0.01,

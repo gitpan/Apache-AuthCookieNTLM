@@ -13,7 +13,7 @@ use Apache::AuthenNTLM;
 use base ('Apache::AuthenNTLM');
 
 use vars qw($VERSION);
-$VERSION = 0.06;
+$VERSION = 0.07;
 
 # Global to store stuff in
 my $cookie_values = {};
@@ -40,7 +40,9 @@ sub handler ($$) {
 	my $t = Apache::Request->new($self);
 	my %cookiejar = Apache::Cookie->new($t)->parse;
 	
-	unless ( defined $cookiejar{$cname} ) {
+	 if (!defined $cookiejar{$cname}
+	         or ($r->method eq 'POST' and $r->header_in('content-length') == 0)){
+	
 		# Don't have the cookie, try authenticate
 		my $v = Apache::AuthenNTLM::handler ($self, $r);
 				

@@ -27,7 +27,7 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
 		'Test::More'	     => 0.01,
-		'Apache::AuthenNTLM' => 0.23,
+		'Apache::AuthenNTLM' => 2.07,
 		'Apache::Request'    => 0.01,
 		'Apache::Cookie'     => 0.01,	
 
