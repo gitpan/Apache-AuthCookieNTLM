@@ -1,4 +1,4 @@
-Apache/AuthCookieNTLM version 0.04
+Apache/AuthCookieNTLM version 0.05
 ==================================
 
 As explained in the Apache::AuthenNTLM module, depending on the user's 

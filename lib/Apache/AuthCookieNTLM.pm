@@ -13,9 +13,10 @@ use Apache::AuthenNTLM;
 use base ('Apache::AuthenNTLM');
 
 use vars qw($VERSION);
-$VERSION = 0.04;
+$VERSION = 0.05;
 
 my $cookie_values = {};
+my $user_domain = '';
 
 sub handler ($$) {
 	my ($self,$r) = @_;
@@ -60,29 +61,38 @@ sub handler ($$) {
 			if($debug > 0) {
 				print STDERR "AuthCookieNTLM - Setting Cookie Expire: " . $config{'expires'} . "\n" if $debug > 0 && defined $config{'expires'};
 				print STDERR "AuthCookieNTLM - Setting Cookie Domain: " . $config{'domain'} . "\n" if $debug > 0 && defined $config{'domain'};
-				print STDERR "AuthCookieNTLM - Setting Cookie Secure: " . $config{'secure'} . "\n" if $debug > 0 && defined $config{'secure'};
-				print STDERR "AuthCookieNTLM - Setting Cookie values: " . Dumper($cookie_values) . "\n" if $debug > 0;
+				print STDERR "AuthCookieNTLM - Setting Cookie Secure: " . $config{'secure'} . "\n" if $debug > 1 && defined $config{'secure'};
+				print STDERR "AuthCookieNTLM - Setting Cookie values: " . Dumper($cookie_values) . "\n" if $debug > 1;
 			}			
 		}
 		# AuthenNTLM loops so have to behave like it does
 		# and return $v
 		return $v;
-	} elsif($debug > 0) {
-		print STDERR "AuthCookieNTLM - Found Cookies\n";	
+	} else {
+		print STDERR "AuthCookieNTLM - Found Cookies for '$cname'\n" if $debug > 0;
+		my %c = $cookiejar{$cname}->parse();
+		if(defined $c{$cname}) {
+			my %v = $c{$cname}->value();
+			if(defined $v{'username'} && defined $v{'userdomain'}) {
+				my $user = lc($v{'userdomain'} . '\\' . $v{'username'});
+		        $r ->user($user) if ref($r) eq 'Apache';
+				print STDERR "AuthCookieNTLM - REMOVE_USER SET: " . $user . "\n" if $debug > 1;
+			}
+		}
 	}
-	
+
 	return OK;
 }
 
 # This is the method which others could overload to
 # set what ever values they want.
 sub choose_cookie_values {
-	my $self = shift;
+	my ($self,$r) = @_;
 	
 	# Save to global
 	if ($cookie_values eq {} || $cookie_values->{username} ne $self->{username}) {
 		$cookie_values->{username} = $self->{username};
-		$cookie_values->{'test'} = '123';
+		$cookie_values->{userdomain} = $self->{userdomain};
 	}
 }
 
@@ -91,9 +101,9 @@ sub choose_cookie_values {
 sub map_user {
     my ($self, $r) = @_ ;
 	
-	$self->choose_cookie_values();
-	
-    return lc("$self->{userdomain}\\$self->{username}") ;
+    $self->choose_cookie_values($r);
+
+    return lc("$self->{userdomain}\\$self->{username}");
 }
 
 
@@ -215,7 +225,10 @@ to store some key and value.
 
     # Save to global
     if ($cookie_values eq {} || $cookie_values->{username} ne $self->{username}) {
+	  # Must be set if you want REMOTE_USER set
       $cookie_values->{username} = $self->{username};
+      $cookie_values->{userdomain} = $self->{userdomain};
+
       # look up from some package
       my $person = MyUserLookup_Package->new($self->{'username'});
       $cookie_values->{'email'} = $person->email();
@@ -224,6 +237,9 @@ to store some key and value.
   }
   1;
 
+If you want REMOTE_USER to be set then the cookie_values must store
+the 'username' and 'userdomain'.  
+  
 =head1 COMMON PROBLEMS
 
 First test Apache::AuthenNTLM directly without this module.
